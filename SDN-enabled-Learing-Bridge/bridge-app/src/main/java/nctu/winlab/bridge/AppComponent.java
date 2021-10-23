@@ -152,7 +152,6 @@ public class AppComponent{
 
             // If the device havent been put in MacTables, add it;
             macTables.putIfAbsent(cp.deviceId(), Maps.newConcurrentMap());
-            log.info ("== New Device ID received: " + cp.deviceId().toString() + " ==");
 
             actLikeSwitch(pc);
         }
