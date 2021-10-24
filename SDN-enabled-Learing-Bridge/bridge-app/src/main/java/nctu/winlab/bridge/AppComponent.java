@@ -201,7 +201,7 @@ public class AppComponent{
                 // PACKET_OUT
                 pc.treatmentBuilder().setOutput(outputPort);
                 pc.send();
-                log.info("!!!! MAC {} is matched on {}! Install flow rule!  !!!!", outputPort.toString());
+                log.info("!!!! MAC {} is matched on {}! Install flow rule!  !!!!", dst, outputPort.toString());
                 
                 // Install flow rule
                 FlowRule flowRule = DefaultFlowRule.builder()
