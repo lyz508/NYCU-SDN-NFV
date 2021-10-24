@@ -43,11 +43,9 @@ import org.onosproject.net.flow.FlowRuleService;
 // import org.onosproject.net.flow.TrafficSelector;    // Abstraction of a slice of network traffic
 import org.onosproject.net.flow.DefaultTrafficSelector;
 import org.onosproject.net.flow.DefaultTrafficTreatment;
-import org.onosproject.net.flow.TrafficSelector.Builder;
 
 // Processing packets
 import org.onosproject.net.packet.InboundPacket;
-import org.onosproject.net.packet.OutboundPacket;
 import org.onosproject.net.packet.PacketContext;
 import org.onosproject.net.packet.PacketProcessor;
 import org.onosproject.net.packet.PacketService;
@@ -62,11 +60,9 @@ import org.onosproject.net.PortNumber; // Represening a port number
 
 // Adding Flow Rule
 import org.onosproject.net.flow.FlowRule;
-import org.onosproject.net.flow.FlowRuleOperations;
 import org.onosproject.net.flow.DefaultFlowRule;
 
 import java.util.Map; // use on building MacTable
-import java.util.Optional; // use to specify if it is nullable
 
 
 /**
@@ -74,9 +70,6 @@ import java.util.Optional; // use to specify if it is nullable
  */
 @Component(immediate = true)
 public class AppComponent{
-
-    /** Some configurable property. */
-    private String someProperty;
 
     // Communicate with the center of controller
     @Reference(cardinality = ReferenceCardinality.MANDATORY)
