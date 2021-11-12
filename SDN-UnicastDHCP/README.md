@@ -5,7 +5,7 @@ descriptions: control the packets and make unicast dhcp
 ---
 
 
-# SDN lab4 Unicast DHCP
+# SDN Unicast DHCP
 ## Reference
 - `org.onosproject.net.config`
     - ConfigFactory\<S,C extends Config\<S>>
