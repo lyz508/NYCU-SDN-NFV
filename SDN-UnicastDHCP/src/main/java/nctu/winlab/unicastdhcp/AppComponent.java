@@ -63,6 +63,8 @@ import org.onosproject.net.DeviceId;    // Representing device identity
 import org.onosproject.net.PortNumber; // Represening a port number
 import org.onlab.packet.TpPort; // for port match
 import org.onlab.packet.IPv4;
+import org.onlab.packet.UDP;
+import org.onlab.packet.DHCP;
 
 // Find Path
 import org.onosproject.net.topology.PathService;
@@ -192,6 +194,34 @@ public class AppComponent {
       InboundPacket inPacket = pc.inPacket();
       Ethernet etherFrame = inPacket.parsed();
       ConnectPoint cp = inPacket.receivedFrom();
+
+      // Filter the packets
+      // Do not process LLDP MAC address in any way
+      if (etherFrame.getDestinationMAC().isLldp()) {
+        // log.info("Get LLDP");
+        return;
+      }
+
+      if (etherFrame.getEtherType() != Ethernet.TYPE_IPV4){
+        // log.info("a");
+        return;
+      }
+      
+      IPv4 ipv4Packet = (IPv4) etherFrame.getPayload();
+      UDP udpPacket = (UDP) ipv4Packet.getPayload();
+      if (ipv4Packet.getProtocol() != IPv4.PROTOCOL_UDP){
+        // log.info("b");
+        return;
+      }
+      else if (udpPacket.getDestinationPort() != UDP.DHCP_CLIENT_PORT &&
+        udpPacket.getDestinationPort() != UDP.DHCP_SERVER_PORT)
+      {
+        // log.info("{}", udpPacket.getDestinationPort());
+        // log.info("c");
+        return;
+      }
+      
+
       Set<Path> res;
       boolean isServer = true, sameDevice = true, samePort = true;
 
@@ -204,7 +234,8 @@ public class AppComponent {
           if (cp.deviceId().toString().charAt(i) != dhcpLocation[0].charAt(i)){
             isServer = false;
             sameDevice = false;
-            log.info("{} =/= {}", cp.deviceId().toString().charAt(i), dhcpLocation[0].charAt(i));
+            log.info("Device: {} =/= {}", cp.deviceId().toString().charAt(i), dhcpLocation[0].charAt(i));
+            break;
           }
         }
       }
@@ -219,7 +250,8 @@ public class AppComponent {
           if (cp.port().toString().charAt(i) != dhcpLocation[1].charAt(i)){
             isServer = false;
             samePort = false;
-            log.info("{} =/= {}", cp.port().toString().charAt(i), dhcpLocation[1].charAt(i));
+            log.info("Port: {} =/= {}", cp.port().toString().charAt(i), dhcpLocation[1].charAt(i));
+            break;
           }
         }
       }
@@ -234,9 +266,10 @@ public class AppComponent {
         return;
 
       // dealing with server client on same device
-      if (sameDevice && !samePort)
+      if (sameDevice && !samePort && !isServer)
       {
         log.info("Server and Client are on same device!!");
+        recordClients.put(etherFrame.getSourceMAC(), cp); // record in table
 
         // for client -> server
         FlowRule flowRule = DefaultFlowRule.builder()
@@ -277,6 +310,8 @@ public class AppComponent {
           .fromApp(appId)
           .build();
         flowRuleService.applyFlowRules(flowRule);
+        // Packet out to server
+        packetOut(pc, PortNumber.portNumber(dhcpLocation[1]));
 
         // End of processing
         return;
@@ -294,8 +329,10 @@ public class AppComponent {
         if (client_cp != null){
           log.info("Client target: {}/{}", client_cp.deviceId().toString(), client_cp.port().toString());
         }
-        else
+        else{
           log.info("!!!!!!!!!!There are No Correponding ConnectPoint in Record!!!!!!!!!!!");
+          return;
+        }
 
         // Calculate paths via pathService
         res = pathService.getPaths( DeviceId.deviceId(dhcpLocation[0]), client_cp.deviceId() );
@@ -307,24 +344,27 @@ public class AppComponent {
           List<Link> lks = arrlst.get(0).links();
           
           // Get links in path and print out
-          for (int i=0; i<lks.size(); i++){
-            ConnectPoint from=lks.get(i).src(), 
-              to=lks.get(i).dst();
-            log.info("From {}/{} to {}/{}", 
-              from.deviceId().toString(), from.port().toString(), 
-              to.deviceId().toString(), to.port().toString());
-          }
-          log.info("!!Start to build flow rule to construct the path!!");
+          if (lks != null){
+            // Print path to log info
+            for (int i=0; i<lks.size(); i++){
+              ConnectPoint from=lks.get(i).src(), 
+                to=lks.get(i).dst();
+              log.info("From {}/{} to {}/{}", 
+                from.deviceId().toString(), from.port().toString(), 
+                to.deviceId().toString(), to.port().toString());
+            }
+            log.info("!!Start to build flow rule to construct the path!!");
 
-          // Build Slow Rule to construct the path
-          if (lks != null)
+            // Build Flow Rule to construct the path
             installFlowRule(pc, isServer, lks);
-          
-          // // Packet Out
-          // packetOut(pc, lks.get(0).src().port());
+          }
+        }
+        else{
+          return;
         }
       }
       else{
+        log.info("From DHCP Client!!");
         // Record MAC address and correponding Connectpoint
         recordClients.put(etherFrame.getSourceMAC(), cp);
 
@@ -337,21 +377,20 @@ public class AppComponent {
           ArrayList<Path> arrlst = new ArrayList<>(res);
           List<Link> lks = arrlst.get(0).links();
           
-          // Get links in path and print out
-          for (int i=0; i<lks.size(); i++){
-            ConnectPoint from=lks.get(i).src(), 
-              to=lks.get(i).dst();
-            log.info("From {}/{} to {}/{}", 
-              from.deviceId().toString(), from.port().toString(), 
-              to.deviceId().toString(), to.port().toString());
-          }
-          log.info("!!Start to build flow rule to construct the path!!");
-          
-          if (lks != null)
-            installFlowRule(pc, isServer, lks);
+          if (lks != null){
+            // Print path to log info
+            for (int i=0; i<lks.size(); i++){
+              ConnectPoint from=lks.get(i).src(), 
+                to=lks.get(i).dst();
+              log.info("From {}/{} to {}/{}", 
+                from.deviceId().toString(), from.port().toString(), 
+                to.deviceId().toString(), to.port().toString());
+            }
+            log.info("!!Start to build flow rule to construct the path!!");
 
-          // // Packet Out
-          // packetOut(pc, lks.get(0).src().port());
+            // Build Flow Rule to construct the path
+            installFlowRule(pc, isServer, lks);
+          }
         }
         else{
           log.info("!!!!!!?????NO PATH?????!!!!!!");
@@ -375,6 +414,7 @@ public class AppComponent {
       // Depends on whether server or client to select
       if (isServer){
         selectorBuilder.matchEthSrc(pc.inPacket().parsed().getSourceMAC())
+          .matchEthSrc(pc.inPacket().parsed().getSourceMAC())
           .matchEthDst(pc.inPacket().parsed().getDestinationMAC())
           .matchUdpDst(TpPort.tpPort(68)); // match server's dst mac address
       }
@@ -423,7 +463,6 @@ public class AppComponent {
       }
       flowRule = genFlowRule(selectorBuilder, treatmentBuilder, des_devid);
       flowRuleService.applyFlowRules(flowRule);
-       // log.info("~~Apply FINAL flow rule on {}, output to port {}~~", des_devid.toString(), PortNumber.portNumber(dhcpLocation[1]).toString());
     }
   }
 
