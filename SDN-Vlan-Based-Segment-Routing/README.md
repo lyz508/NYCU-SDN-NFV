@@ -30,11 +30,11 @@ sudo tcpdump -nvi <NIC> -e vlan
 
 ## workflow
 ![](https://i.imgur.com/ZA4QfLj.png)
-- Partition subnets will ask for DHCP assigned IP in subnet
-    - Only assign subnet IPs, instead of original network IPs
+- Hosts in subnet will only be assigned with subnets IPs.
+    - Only assign subnet IPs, instead of original network address.
 - Vlan-Based Segment Routing
     ![](https://i.imgur.com/DmWyY9G.jpg)
-    - Push vLan tag when a packet went in it
+    - Push vLan tag when packets went into the network
     - Pop vLan tag when packets go out
     - Forwarding packet to proper port
         - match with its MAC address (hop-by-hop forwarding)
